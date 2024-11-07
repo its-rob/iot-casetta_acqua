@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "H97+IkSrlwgkEqL/Z9poHfoBjJECouAKefj0TxYZIsE=",
+  "Source": "WaterDispenserServer",
+  "BasePath": "_content/WaterDispenserServer",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
