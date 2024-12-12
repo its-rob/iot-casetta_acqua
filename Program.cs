@@ -1,39 +1,68 @@
-﻿using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using System.Text;
+﻿using MQTTnet.Client;
+using MQTTnet;
+using MQTTnet.Protocol;
 
-string CloudAMQPUrl = Environment.GetEnvironmentVariable("RABBITMQ_URI");
+string broker = "broker.emqx.io";
+int port = 1883;
+string clientId = Guid.NewGuid().ToString();
+string topic = "iot/casetta/prova";
+string username = "";
+string password = "";
 
-try
+// Create a MQTT client factory
+var factory = new MqttFactory();
+
+// Create a MQTT client instance
+var mqttClient = factory.CreateMqttClient();
+
+// Create MQTT client options
+var options = new MqttClientOptionsBuilder()
+    .WithTcpServer(broker, port) // MQTT broker address and port
+    .WithCredentials(username, password) // Set username and password
+    .WithClientId(clientId)
+    .WithCleanSession()
+    .Build();
+
+
+var connectResult = await mqttClient.ConnectAsync(options);
+/*if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
 {
-    var factory = new ConnectionFactory
+    Console.WriteLine("Connected to MQTT broker successfully.");
+
+    // Subscribe to a topic
+    await mqttClient.SubscribeAsync(topic);
+
+    // Callback function when a message is received
+    mqttClient.ApplicationMessageReceivedAsync += e =>
     {
-        Uri = new Uri(CloudAMQPUrl)
-    };
-    using var connection = await factory.CreateConnectionAsync();
-    using var channel = await connection.CreateChannelAsync();
-
-    await channel.QueueDeclareAsync(queue: "hello", durable: false, exclusive: false, autoDelete: false,
-        arguments: null);
-
-    Console.WriteLine(" [*] Waiting for messages.");
-
-    var consumer = new AsyncEventingBasicConsumer(channel);
-    consumer.ReceivedAsync += (model, ea) =>
-    {
-        var body = ea.Body.ToArray();
-        var message = Encoding.UTF8.GetString(body);
-        Console.WriteLine($" [x] Received {message}");
+        Console.WriteLine($"Received message: {Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment)}");
         return Task.CompletedTask;
     };
+}*/
 
-    await channel.BasicConsumeAsync("hello", autoAck: true, consumer: consumer);
 
-    Console.WriteLine(" Press [enter] to exit.");
-    Console.ReadLine();
-}
-catch (Exception e)
+for (int i = 0; i < 10; i++)
 {
-    Console.WriteLine("ECCEZIONE!");
-    Console.WriteLine(e);
+    var message = new MqttApplicationMessageBuilder()
+        .WithTopic(topic)
+        .WithPayload($"Hello, MQTT! Message number {i}")
+        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce) // QoS 1
+        .WithRetainFlag()
+        .Build();
+
+    var result = await mqttClient.PublishAsync(message);
+
+    if (result.ReasonCode == MqttClientPublishReasonCode.Success)
+    {
+        Console.WriteLine($"Message {i} sent successfully with QoS 1.");
+    }
+    else
+    {
+        Console.WriteLine($"Message {i} failed to send. Reason: {result.ReasonCode}");
+    }
+
+    await Task.Delay(1000); // Wait for 1 second
 }
+
+await mqttClient.UnsubscribeAsync(topic);
+await mqttClient.DisconnectAsync();
